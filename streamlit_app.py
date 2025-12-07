@@ -946,15 +946,21 @@ def main():
                     macro_payload = macro_work.run()
                     # Note: fundamental_payload already fetched above for feature engineering
                     
-                    # Get forecasts
+                    # CRITICAL FIX FOR STREAMLIT CLOUD: Read results immediately and store FULL dict in session state
+                    # Streamlit Cloud has ephemeral filesystem - files may not exist after rerun
                     all_models_forecast = None
-                    if Path(model_results_path).exists():
+                    model_results_data = None  # Store full results dict
+                    
+                    if model_results_path and Path(model_results_path).exists():
                         try:
-                            with open(model_results_path, 'r') as f:
-                                model_results = json.load(f)
+                            with open(model_results_path, 'r', encoding='utf-8') as f:
+                                model_results_data = json.load(f)
+                            
+                            # Store FULL results dict in session state (this persists across reruns)
+                            st.session_state.model_results_data = model_results_data
                             
                             # Debug: Check what's in model_results
-                            robust_data = model_results.get("mha_dqn_robust", {})
+                            robust_data = model_results_data.get("mha_dqn_robust", {})
                             
                             # Check if we have forecast data (recommendation, price_change_pct, etc.)
                             has_forecast_fields = any([
@@ -977,16 +983,18 @@ def main():
                                     "model_forecasts": {
                                         "mha_dqn_robust": robust_data
                                     },
-                                    "last_data_date": model_results.get("last_data_date", ""),
-                                    "forecast_date": model_results.get("forecast_date", ""),
-                                    "last_actual_price": model_results.get("current_price", 0)
+                                    "last_data_date": model_results_data.get("last_data_date", ""),
+                                    "forecast_date": model_results_data.get("forecast_date", ""),
+                                    "last_actual_price": model_results_data.get("current_price", 0)
                                 }
+                            
+                            print(f"[STREAMLIT CLOUD FIX] ✅ Results loaded and stored in session state (size: {len(str(model_results_data))} chars)")
                         except Exception as e:
-                            st.error(f"Error reading model results: {e}")
+                            print(f"[STREAMLIT CLOUD FIX] ⚠️ Error reading results file: {e}")
                             import traceback
-                            st.code(traceback.format_exc())
+                            traceback.print_exc()
                     else:
-                        st.warning(f"⚠️ Model results file not found: {model_results_path}")
+                        print(f"[STREAMLIT CLOUD FIX] ⚠️ Model results file not found: {model_results_path}")
                     
                     # Store results in session state for display after analysis completes
                     st.session_state.analysis_complete = True
@@ -996,6 +1004,7 @@ def main():
                     st.session_state[ticker_display_reset_key] = False
                     st.session_state.price_path = price_path
                     st.session_state.model_results_path = model_results_path
+                    st.session_state.model_results_data = model_results_data  # Store full dict (survives reruns)
                     st.session_state.sentiment_payload = sentiment_payload
                     st.session_state.macro_payload = macro_payload
                     st.session_state.fundamental_payload = fundamental_payload
@@ -1052,57 +1061,71 @@ def main():
         
         price_path = st.session_state.get('price_path', '')
         model_results_path = st.session_state.get('model_results_path', '')
+        model_results_data = st.session_state.get('model_results_data', None)  # CRITICAL: Use session state data
         sentiment_payload = st.session_state.get('sentiment_payload', {})
         macro_payload = st.session_state.get('macro_payload', {})
         fundamental_payload = st.session_state.get('fundamental_payload', {})
         all_models_forecast = st.session_state.get('all_models_forecast', None)
         
+        # CRITICAL FIX FOR STREAMLIT CLOUD: Use session state data first, then try file
+        # On Streamlit Cloud, files may not exist after rerun, but session state persists
+        if model_results_data is None:
+            # Try to read from file if not in session state
+            results_file_exists = False
+            if model_results_path:
+                results_file_exists = Path(model_results_path).exists()
+                if not results_file_exists:
+                    # Try to find it - files are saved as {ticker.lower()}_model_results.json
+                    ticker_name = (st.session_state.get('ticker') or st.session_state.get('analysis_ticker', '')).lower()
+                    search_paths = [
+                        f"results/{ticker_name}_model_results.json",
+                        f"results/model_results_{ticker_name.upper()}.json",
+                        f"results/{ticker_name.upper()}/model_results.json",
+                        f"results/{ticker_name}/model_results.json",
+                        "results/model_results.json"
+                    ]
+                    for search_path in search_paths:
+                        if Path(search_path).exists():
+                            model_results_path = search_path
+                            results_file_exists = True
+                            st.session_state.model_results_path = search_path
+                            try:
+                                with open(search_path, 'r', encoding='utf-8') as f:
+                                    model_results_data = json.load(f)
+                                st.session_state.model_results_data = model_results_data
+                                print(f"[STREAMLIT CLOUD FIX] ✅ Loaded results from file and stored in session state")
+                            except Exception as e:
+                                print(f"[STREAMLIT CLOUD FIX] ⚠️ Could not load file: {e}")
+                            break
+            
+            if not model_results_data:
+                print(f"[STREAMLIT CLOUD FIX] ⚠️ No results data available in session state or file")
+        else:
+            print(f"[STREAMLIT CLOUD FIX] ✅ Using results from session state (Streamlit Cloud safe)")
+        
         # Verify price_path exists
         if price_path and not Path(price_path).exists():
             st.warning(f"⚠️ Price data file not found: {price_path}")
         
-        # Check if model_results_path file exists
-        results_file_exists = False
-        if model_results_path:
-            results_file_exists = Path(model_results_path).exists()
-            if not results_file_exists:
-                # Try to find it - files are saved as {ticker.lower()}_model_results.json
-                ticker_name = (st.session_state.get('ticker') or st.session_state.get('analysis_ticker', '')).lower()  # Use lowercase to match saved format
-                search_paths = [
-                    f"results/{ticker_name}_model_results.json",  # Actual format: ticker_lower_model_results.json
-                    f"results/model_results_{ticker_name.upper()}.json",  # Alternative format
-                    f"results/{ticker_name.upper()}/model_results.json",  # Ticker folder format
-                    f"results/{ticker_name}/model_results.json",  # Lowercase folder format
-                    "results/model_results.json"  # Generic fallback
-                ]
-                for search_path in search_paths:
-                    if Path(search_path).exists():
-                        model_results_path = search_path
-                        results_file_exists = True
-                        st.session_state.model_results_path = search_path
-                        # Reset display flag since we found the file
-                        if ticker_display_key:
-                            st.session_state[ticker_display_key] = False
-                        st.session_state.results_displayed = False
-                        break
-        
-        # Display results ONCE - pass None for model_results_path if file doesn't exist
-        # display_results can handle None and will use forecast data instead
+        # Display results ONCE - use session state data if available, otherwise file path
         try:
             # Mark as displayed BEFORE calling to prevent duplicate calls
             if ticker_display_key:
                 st.session_state[ticker_display_key] = True
             st.session_state.results_displayed = True
             
+            # If we have data in session state, create a temporary file path indicator
+            # The display_results function will use the data from session state if model_results_data is passed
             display_results(
                 price_path if (price_path and Path(price_path).exists()) else None,
-                model_results_path if results_file_exists else None,
+                model_results_path if model_results_data is None else "SESSION_STATE_DATA",  # Signal to use session state
                 sentiment_payload,
                 macro_payload,
                 ticker,
                 forecast_payload=None,
                 fundamental_payload=fundamental_payload,
-                all_models_forecast=all_models_forecast
+                all_models_forecast=all_models_forecast,
+                model_results_data=model_results_data  # Pass data directly
             )
         except Exception as e:
             st.error(f"Error displaying results: {str(e)}")
@@ -1234,7 +1257,8 @@ def display_results(
     ticker: str = "UNKNOWN",
     forecast_payload: Dict = None,
     fundamental_payload: Dict = None,
-    all_models_forecast: Dict = None
+    all_models_forecast: Dict = None,
+    model_results_data: Dict = None  # NEW: Direct data from session state (Streamlit Cloud fix)
 ):
     """Display all analysis results with modern styling."""
     
@@ -1377,10 +1401,22 @@ def display_results(
         # Get robustness score from model results if available
         robustness_one_liner = ""
         try:
-            model_results_path_local = st.session_state.get('model_results_path', model_results_path) if 'model_results_path' in st.session_state else model_results_path
-            if model_results_path_local and Path(model_results_path_local).exists():
-                with open(model_results_path_local, 'r') as f:
-                    payload_robust = json.load(f)
+            # Use session state data if available, otherwise try file
+            payload_robust = model_results_data if model_results_data else None
+            if not payload_robust:
+                model_results_path_local = st.session_state.get('model_results_path', model_results_path) if 'model_results_path' in st.session_state else model_results_path
+                if model_results_path_local:
+                    if model_results_path_local == "SESSION_STATE_DATA":
+                        payload_robust = st.session_state.get('model_results_data')
+                    elif Path(model_results_path_local).exists():
+                        try:
+                            with open(model_results_path_local, 'r') as f:
+                                payload_robust = json.load(f)
+                            st.session_state.model_results_data = payload_robust
+                        except Exception as e:
+                            print(f"[STREAMLIT CLOUD FIX] ⚠️ Could not read robustness file: {e}")
+            
+            if payload_robust:
                 robust_metrics_robust = payload_robust.get("mha_dqn_robust", {}).get("metrics", {})
                 robustness_score_val = robust_metrics_robust.get('robustness_score', None)
                 if robustness_score_val is not None and robustness_score_val > 0:
@@ -1556,13 +1592,33 @@ def display_results(
     # Section 3: Performance Metrics and Backtesting
     # Only show performance if model was trained live (models always train live now)
     train_models_flag = st.session_state.get('train_models', True)
-    model_results_path_local = st.session_state.get('model_results_path', model_results_path) if 'model_results_path' in st.session_state else model_results_path
     
-    # Only display performance results if models were trained live
-    if train_models_flag and model_results_path_local and Path(model_results_path_local).exists():
+    # CRITICAL FIX FOR STREAMLIT CLOUD: Use session state data first, then try file
+    payload_perf = None
+    if model_results_data:
+        # Use data from session state (persists across reruns on Streamlit Cloud)
+        payload_perf = model_results_data
+        print(f"[STREAMLIT CLOUD FIX] ✅ Using results from session state for performance metrics")
+    else:
+        # Fallback to reading from file
+        model_results_path_local = st.session_state.get('model_results_path', model_results_path) if 'model_results_path' in st.session_state else model_results_path
+        if train_models_flag and model_results_path_local:
+            # Check if path is our signal for session state
+            if model_results_path_local == "SESSION_STATE_DATA":
+                # Data should be in session state
+                payload_perf = st.session_state.get('model_results_data')
+            elif Path(model_results_path_local).exists():
+                try:
+                    with open(model_results_path_local, 'r') as f:
+                        payload_perf = json.load(f)
+                    # Store in session state for future use
+                    st.session_state.model_results_data = payload_perf
+                except Exception as e:
+                    print(f"[STREAMLIT CLOUD FIX] ⚠️ Could not read file: {e}")
+    
+    # Only display performance results if we have data
+    if train_models_flag and payload_perf:
         try:
-            with open(model_results_path_local, 'r') as f:
-                payload_perf = json.load(f)
             
             robust_metrics_perf = payload_perf.get("mha_dqn_robust", {}).get("metrics", {})
             
