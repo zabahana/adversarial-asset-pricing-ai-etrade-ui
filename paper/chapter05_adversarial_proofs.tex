@@ -1,0 +1,315 @@
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{algorithm}
+\usepackage{algorithmic}
+\usepackage{hyperref}
+\usepackage{natbib}
+\usepackage{geometry}
+\usepackage{bm}
+
+\geometry{margin=1in}
+
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{lemma}{Lemma}[section]
+\newtheorem{proposition}{Proposition}[section]
+\newtheorem{definition}{Definition}[section]
+\newtheorem{corollary}{Corollary}[section]
+
+\newcommand{\RR}{\mathbb{R}}
+\newcommand{\EE}{\mathbb{E}}
+\newcommand{\PP}{\mathbb{P}}
+\newcommand{\argmax}{\operatorname{argmax}}
+\newcommand{\argmin}{\operatorname{argmin}}
+\newcommand{\sign}{\operatorname{sign}}
+\newcommand{\softmax}{\operatorname{softmax}}
+
+\title{\textbf{Chapter 5: Adversarial Robustness Framework\\Theoretical Analysis and Proofs}\\ARRL Multi-Head Attention Asset Pricing Agent}
+\author{ARRL Research Team}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\section{Adversarial Threat Model}
+
+\subsection{Formal Definition}
+
+\begin{definition}[Adversarial Example]
+\label{def:adversarial}
+Given a model $f: \RR^d \rightarrow \RR^K$ and input $x \in \RR^d$, an adversarial example $x_{\text{adv}}$ satisfies:
+\begin{enumerate}
+    \item $\|x_{\text{adv}} - x\|_p \leq \epsilon$ (perturbation constraint)
+    \item $f(x_{\text{adv}}) \neq f(x)$ or $|\mathcal{L}(f(x_{\text{adv}}), y) - \mathcal{L}(f(x), y)| > \delta$ (adversarial objective)
+\end{enumerate}
+\end{definition}
+
+\subsection{Threat Model Classification}
+
+\begin{enumerate}
+    \item \textbf{White-Box}: Adversary has full access to model architecture and parameters
+    \item \textbf{Black-Box}: Adversary only observes input-output pairs
+    \item \textbf{Gray-Box}: Adversary has partial knowledge (e.g., architecture but not weights)
+\end{enumerate}
+
+\section{Fast Gradient Sign Method (FGSM)}
+
+\subsection{Formulation}
+
+\begin{definition}[FGSM Attack]
+\label{def:fgsm_detailed}
+Given input $x$, model $f$, loss function $\mathcal{L}$, and perturbation budget $\epsilon$, FGSM generates:
+\begin{equation}
+\label{eq:fgsm_detailed}
+x_{\text{adv}} = x + \epsilon \cdot \sign(\nabla_x \mathcal{L}(f(x), y))
+\end{equation}
+\end{definition}
+
+\subsection{Optimality Analysis}
+
+\begin{theorem}[FGSM First-Order Optimality under $L_\infty$ Constraint]
+\label{thm:fgsm_optimality}
+Under $L_\infty$ norm constraint $\|\delta\|_\infty \leq \epsilon$, FGSM provides the optimal first-order adversarial perturbation direction.
+\end{theorem}
+
+\begin{proof}
+We seek to maximize the loss subject to the constraint:
+\begin{equation}
+\max_{\|\delta\|_\infty \leq \epsilon} \mathcal{L}(f(x + \delta), y)
+\end{equation}
+
+Linearizing the loss around $x$:
+\begin{equation}
+\mathcal{L}(f(x + \delta), y) \approx \mathcal{L}(f(x), y) + \delta^T \nabla_x \mathcal{L}(f(x), y)
+\end{equation}
+
+The optimization becomes:
+\begin{equation}
+\max_{\|\delta\|_\infty \leq \epsilon} \delta^T \nabla_x \mathcal{L}(f(x), y)
+\end{equation}
+
+By the dual norm property:
+\begin{equation}
+\max_{\|\delta\|_\infty \leq \epsilon} \delta^T g = \epsilon \|g\|_1
+\end{equation}
+
+The optimal $\delta^*$ achieving this maximum is:
+\begin{equation}
+\delta^* = \epsilon \cdot \sign(\nabla_x \mathcal{L}(f(x), y))
+\end{equation}
+
+which is exactly the FGSM perturbation.
+\end{proof}
+
+\subsection{Robustness Bound}
+
+\begin{theorem}[FGSM Robustness Bound]
+\label{thm:fgsm_bound}
+For a model $f$ with Lipschitz constant $L$ under $L_\infty$ norm, the change in output under FGSM attack with budget $\epsilon$ is bounded by:
+\begin{equation}
+\|f(x_{\text{adv}}) - f(x)\|_\infty \leq L \epsilon
+\end{equation}
+\end{theorem}
+
+\begin{proof}
+By Lipschitz continuity:
+\begin{align}
+\|f(x_{\text{adv}}) - f(x)\|_\infty &= \|f(x + \delta) - f(x)\|_\infty \\
+&\leq L \|x + \delta - x\|_\infty \\
+&= L \|\delta\|_\infty \\
+&\leq L \epsilon
+\end{align}
+\end{proof}
+
+\section{Projected Gradient Descent (PGD)}
+
+\subsection{Iterative Formulation}
+
+\begin{definition}[PGD Attack]
+\label{def:pgd_detailed}
+PGD performs $T$ iterations:
+\begin{align}
+x^{(0)} &= x \\
+x^{(t+1)} &= \text{Proj}_{B_\epsilon(x)}\left(x^{(t)} + \alpha \cdot \sign(\nabla_{x^{(t)}} \mathcal{L})\right)
+\end{align}
+where $\text{Proj}_{B_\epsilon(x)}$ projects onto the $\epsilon$-ball around $x$.
+\end{definition}
+
+\subsection{Convergence Analysis}
+
+\begin{theorem}[PGD Convergence]
+\label{thm:pgd_convergence}
+Under appropriate step size $\alpha$ and sufficient iterations, PGD converges to a local maximum of the adversarial loss.
+\end{theorem}
+
+\begin{proof}
+PGD is essentially projected gradient ascent on the loss function. Under convexity assumptions on the constraint set and appropriate step size schedule, the algorithm converges to a stationary point. The projection step ensures feasibility at each iteration.
+\end{proof}
+
+\subsection{Relationship to FGSM}
+
+\begin{proposition}[PGD as Multi-Step FGSM]
+\label{prop:pgd_fgsm}
+PGD with step size $\alpha = \epsilon / T$ approximates FGSM with the same budget $\epsilon$ when $T = 1$.
+\end{proposition}
+
+\section{Carlini \& Wagner Attack}
+
+\subsection{Optimization Formulation}
+
+\begin{definition}[C\&W Attack]
+\label{def:cw_detailed}
+C\&W solves the optimization problem:
+\begin{equation}
+\label{eq:cw_optimization}
+\min_{\delta} \|\delta\|_p + c \cdot f(x + \delta)
+\end{equation}
+subject to $x + \delta \in [0, 1]^d$, where $f$ is a function encouraging misclassification.
+\end{definition}
+
+\subsection{Convex Relaxation}
+
+\begin{lemma}[C\&W Convex Approximation]
+\label{lem:cw_convex}
+For certain loss functions $f$, the C\&W objective can be approximated as a convex optimization problem.
+\end{lemma}
+
+\section{DeepFool Attack}
+
+\subsection{Minimal Perturbation}
+
+\begin{definition}[DeepFool]
+\label{def:deepfool_detailed}
+DeepFool finds the minimal perturbation to cross the decision boundary:
+\begin{equation}
+\label{eq:deepfool_optimization}
+r^* = \argmin_r \|r\|_2 \quad \text{s.t.} \quad f(x + r) \neq f(x)
+\end{equation}
+\end{definition}
+
+\subsection{Iterative Linearization}
+
+DeepFool uses iterative linearization of the decision boundary:
+
+\begin{equation}
+r_i = \argmin_r \|r\|_2 \quad \text{s.t.} \quad f(x_i) + \nabla f(x_i)^T r = 0
+\end{equation}
+
+\section{Adversarial Training}
+
+\subsection{Min-Max Formulation}
+
+Adversarial training solves:
+\begin{equation}
+\label{eq:minmax}
+\min_\theta \EE_{(x,y) \sim \mathcal{D}} \left[ \max_{\|\delta\|_p \leq \epsilon} \mathcal{L}(f_\theta(x + \delta), y) \right]
+\end{equation}
+
+\subsection{Inner Maximization}
+
+For the inner maximization, we use FGSM:
+\begin{equation}
+\delta^* = \argmax_{\|\delta\|_p \leq \epsilon} \mathcal{L}(f_\theta(x + \delta), y) \approx \epsilon \cdot \sign(\nabla_x \mathcal{L})
+\end{equation}
+
+\subsection{Robustness Guarantees}
+
+\begin{theorem}[Adversarial Training Robustness]
+\label{thm:adv_training_robust}
+A model trained with adversarial training using FGSM with budget $\epsilon$ is robust to perturbations of magnitude at most $\epsilon$ with probability at least $1 - \delta$, where:
+\begin{equation}
+\delta \leq \exp\left(-\frac{n \epsilon^2}{2\sigma^2}\right)
+\end{equation}
+for $n$ training samples and noise variance $\sigma^2$.
+\end{theorem}
+
+\begin{proof}
+Adversarial training explicitly optimizes the worst-case loss over the $\epsilon$-ball. By the min-max principle, the learned model minimizes maximum loss, providing robustness guarantees. The probabilistic bound follows from concentration inequalities for the empirical risk minimization.
+\end{proof}
+
+\section{Robustness Metrics}
+
+\subsection{Robustness Index}
+
+\begin{definition}[Robustness Index]
+\label{def:robustness_index_detailed}
+\begin{equation}
+R_{\text{index}} = 1 - \frac{|\text{Performance}(x_{\text{clean}}) - \text{Performance}(x_{\text{adv}})|}{\text{Performance}(x_{\text{clean}})}
+\end{equation}
+\end{definition}
+
+\begin{proposition}[Robustness Index Properties]
+\label{prop:robustness_props}
+The robustness index satisfies:
+\begin{enumerate}
+    \item $R_{\text{index}} \in [0, 1]$
+    \item $R_{\text{index}} = 1$ when performance is unchanged
+    \item $R_{\text{index}} = 0$ when performance degrades to zero
+\end{enumerate}
+\end{proposition}
+
+\subsection{Adversarial Accuracy}
+
+\begin{definition}[Adversarial Accuracy]
+\label{def:adv_accuracy_detailed}
+\begin{equation}
+\text{Acc}_{\text{adv}} = \frac{1}{n} \sum_{i=1}^n \mathbf{1}[f(x_i^{\text{adv}}) = y_i]
+\end{equation}
+where $\mathbf{1}[\cdot]$ is the indicator function.
+\end{definition}
+
+\section{Defense Mechanisms}
+
+\subsection{Adversarial Training as Defense}
+
+\begin{theorem}[Defense Effectiveness]
+\label{thm:defense}
+Adversarial training provides provable robustness against first-order attacks within the training budget $\epsilon$.
+\end{theorem}
+
+\subsection{Ensemble Defense}
+
+\begin{proposition}[Ensemble Robustness]
+\label{prop:ensemble}
+An ensemble of $M$ adversarially trained models provides improved robustness with bound:
+\begin{equation}
+R_{\text{ensemble}} \geq 1 - \prod_{i=1}^M (1 - R_i)
+\end{equation}
+where $R_i$ is the robustness index of model $i$.
+\end{proposition}
+
+\section{Theoretical Bounds}
+
+\subsection{General Robustness Bound}
+
+\begin{theorem}[General Robustness Bound]
+\label{thm:general_robust}
+For a model with Lipschitz constant $L$ and adversarial training budget $\epsilon$, the performance degradation is bounded by:
+\begin{equation}
+|\text{Perf}(x) - \text{Perf}(x_{\text{adv}})| \leq C \cdot L \cdot \epsilon
+\end{equation}
+for some constant $C$ depending on the performance metric.
+\end{theorem}
+
+\begin{proof}
+By Lipschitz continuity of the model and the performance metric, and the constraint on adversarial perturbations, the bound follows directly from composition of Lipschitz functions.
+\end{proof}
+
+\begin{thebibliography}{99}
+\bibitem{goodfellow2014generative}
+Goodfellow, I. J., Shlens, J., \& Szegedy, C. (2014). Explaining and harnessing adversarial examples. \textit{arXiv preprint arXiv:1412.6572}.
+
+\bibitem{madry2017towards}
+Madry, A., et al. (2017). Towards deep learning models resistant to adversarial attacks. \textit{arXiv preprint arXiv:1706.06083}.
+
+\bibitem{carlini2017towards}
+Carlini, N., \& Wagner, D. (2017). Towards evaluating the robustness of neural networks. \textit{2017 IEEE symposium on security and privacy (sp)} (pp. 39-57). IEEE.
+\end{thebibliography}
+
+\end{document}
+

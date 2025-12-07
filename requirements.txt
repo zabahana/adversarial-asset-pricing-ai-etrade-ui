@@ -1,0 +1,17 @@
+functions-framework==3.5.0
+google-cloud-bigquery==3.11.4
+
+alpha_vantage==3.0.0
+joblib==1.4.2
+# lightning==2.4.0  # Not needed for Streamlit standalone app
+matplotlib==3.9.2
+numpy==2.1.2
+pandas==2.2.3
+plotly==5.24.1
+requests==2.32.3
+scikit-learn==1.5.2
+streamlit==1.39.0
+torch==2.8.0
+torchvision==0.23.0
+transformers==4.45.1
+openai>=1.0.0  # Optional: for LLM-powered summaries

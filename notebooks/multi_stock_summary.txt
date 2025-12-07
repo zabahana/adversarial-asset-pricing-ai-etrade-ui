@@ -1,0 +1,65 @@
+
+================================================================================
+MULTI-STOCK PROTAGONIST DQN ANALYSIS
+================================================================================
+Generated: 2025-10-12 22:40:44
+Total Stocks Analyzed: 5
+
+PERFORMANCE BY STOCK:
+================================================================================
+
+AAPL:
+  DQN Return:           2.46%
+  Buy & Hold Return:    5.70%
+  Outperformance:      -3.24%
+  Sharpe Ratio:         0.11
+  Max Drawdown:       -32.26%
+  Total Trades:           16
+  Final Value:       $102,455.60
+
+GOOGL:
+  DQN Return:          11.78%
+  Buy & Hold Return:   41.73%
+  Outperformance:     -29.95%
+  Sharpe Ratio:         0.10
+  Max Drawdown:       -10.46%
+  Total Trades:           18
+  Final Value:       $111,779.75
+
+MSFT:
+  DQN Return:          11.31%
+  Buy & Hold Return:   22.68%
+  Outperformance:     -11.37%
+  Sharpe Ratio:         0.13
+  Max Drawdown:        -7.59%
+  Total Trades:           84
+  Final Value:       $111,305.03
+
+NVDA:
+  DQN Return:          31.40%
+  Buy & Hold Return:   27.49%
+  Outperformance:       3.91%
+  Sharpe Ratio:         0.15
+  Max Drawdown:       -35.92%
+  Total Trades:           25
+  Final Value:       $131,396.87
+
+TSLA:
+  DQN Return:         -10.16%
+  Buy & Hold Return:   22.12%
+  Outperformance:     -32.28%
+  Sharpe Ratio:        -0.05
+  Max Drawdown:       -26.49%
+  Total Trades:          106
+  Final Value:       $89,843.78
+
+================================================================================
+AGGREGATE STATISTICS:
+================================================================================
+Average Return:     9.36% (±13.59%)
+Average Sharpe:     0.09 (±0.07)
+Best Performer:     NVDA
+Worst Performer:    TSLA
+
+Stocks Beating B&H: 1 / 5
+================================================================================

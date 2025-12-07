@@ -1,0 +1,77 @@
+
+================================================================================
+DQN COMPARISON REPORT: STANDARD vs ATTENTION-ENHANCED
+================================================================================
+Generated: 2025-10-13 01:55:46
+Training: 30 episodes per model per stock
+Data: Monthly resampled data (121 datapoints per stock)
+
+STOCKS TESTED: 5
+AAPL, GOOGL, MSFT, NVDA, TSLA
+
+================================================================================
+AVERAGE PERFORMANCE
+================================================================================
+Standard DQN:      25.94% average return
+Attention DQN:     34.13% average return
+Buy & Hold:        72.35% average return
+
+Improvement:       +8.19% (Attention vs Standard)
+
+================================================================================
+WIN RATE
+================================================================================
+Attention DQN wins:  2 / 5 stocks (40%)
+Standard DQN wins:   3 / 5 stocks (60%)
+
+================================================================================
+STOCK-BY-STOCK BREAKDOWN
+================================================================================
+
+AAPL:
+  Standard DQN:      13.50%
+  Attention DQN:     -4.74%
+  Buy & Hold:        45.03%
+  Winner:          STANDARD ✓ (by 18.24%)
+  vs Buy & Hold:   Std -31.53% | Att -49.77%
+
+GOOGL:
+  Standard DQN:      39.26%
+  Attention DQN:     32.06%
+  Buy & Hold:        46.33%
+  Winner:          STANDARD ✓ (by 7.20%)
+  vs Buy & Hold:   Std -7.07% | Att -14.27%
+
+MSFT:
+  Standard DQN:      26.12%
+  Attention DQN:     19.58%
+  Buy & Hold:        32.70%
+  Winner:          STANDARD ✓ (by 6.54%)
+  vs Buy & Hold:   Std -6.58% | Att -13.12%
+
+NVDA:
+  Standard DQN:      14.96%
+  Attention DQN:     55.71%
+  Buy & Hold:       112.08%
+  Winner:          ATTENTION ✓ (by 40.75%)
+  vs Buy & Hold:   Std -97.12% | Att -56.37%
+
+TSLA:
+  Standard DQN:      35.86%
+  Attention DQN:     68.06%
+  Buy & Hold:       125.61%
+  Winner:          ATTENTION ✓ (by 32.20%)
+  vs Buy & Hold:   Std -89.75% | Att -57.55%
+
+================================================================================
+KEY INSIGHTS
+================================================================================
+
+✓ Standard DQN outperforms Attention-Enhanced DQN (3/5 stocks)
+✓ Average improvement of 8.19% with attention mechanism
+✓ Best Standard DQN: GOOGL (39.26%)
+✓ Best Attention DQN: TSLA (68.06%)
+
+✓ Attention's biggest advantage: NVDA (+40.75%)
+
+================================================================================

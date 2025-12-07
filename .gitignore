@@ -1,0 +1,100 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
+venv/
+env/
+ENV/
+.venv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Streamlit
+.streamlit/secrets.toml
+# Note: .streamlit/config.toml should be committed (it's not secret)
+
+# Data & Results
+data/*.csv
+data/*.json
+data/*.pkl
+results/*.json
+results/*.pkl
+results/*.csv
+results/cached_*/
+models/*.ckpt
+models/*.pth
+models/*.pt
+models/dqn/
+models/mha_dqn/
+
+# Logs
+*.log
+logs/
+streamlit.log
+
+# Environment variables
+.env
+.env.local
+*.env
+
+# Credentials
+credentials.json
+service-account*.json
+*.key
+*.pem
+
+# Cache
+.cache/
+*.cache
+.pytest_cache/
+
+# Outputs
+outputs/
+*.png
+*.jpg
+*.pdf
+*.svg
+!mha-dqn.png
+!architecture_diagram.png
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.backup
+*_temp.py
+*_original.py
+
+# Jupyter Notebooks
+.ipynb_checkpoints/
+*.ipynb
+
+# OS
+.DS_Store
+Thumbs.db
+

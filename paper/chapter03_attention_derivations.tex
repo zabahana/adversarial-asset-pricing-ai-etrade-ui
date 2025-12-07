@@ -1,0 +1,282 @@
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{algorithm}
+\usepackage{algorithmic}
+\usepackage{hyperref}
+\usepackage{natbib}
+\usepackage{geometry}
+\usepackage{bm}
+
+\geometry{margin=1in}
+
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{lemma}{Lemma}[section]
+\newtheorem{proposition}{Proposition}[section]
+\newtheorem{definition}{Definition}[section]
+
+\newcommand{\RR}{\mathbb{R}}
+\newcommand{\EE}{\mathbb{E}}
+\newcommand{\softmax}{\operatorname{softmax}}
+\newcommand{\ReLU}{\operatorname{ReLU}}
+
+\title{\textbf{Chapter 3: Multi-Head Attention Mechanism\\Detailed Mathematical Derivations and Proofs}\\ARRL Multi-Head Attention Asset Pricing Agent}
+\author{ARRL Research Team}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\section{Attention Mechanism: Mathematical Foundation}
+
+\subsection{Scaled Dot-Product Attention}
+
+\subsubsection{Basic Formulation}
+
+Given query matrix $Q \in \RR^{n \times d_k}$, key matrix $K \in \RR^{m \times d_k}$, and value matrix $V \in \RR^{m \times d_v}$, attention computes:
+
+\begin{equation}
+\label{eq:attention_basic}
+\text{Attention}(Q, K, V) = \softmax\left(\frac{QK^T}{\sqrt{d_k}}\right) V
+\end{equation}
+
+\subsubsection{Why Scaling?}
+
+\begin{proposition}[Gradient Stability of Scaled Attention]
+\label{prop:scaling}
+The scaling factor $\frac{1}{\sqrt{d_k}}$ prevents attention scores from having large variance, ensuring stable gradients during backpropagation.
+\end{proposition}
+
+\begin{proof}
+For $Q, K \in \RR^{n \times d_k}$ with entries independently sampled from $\mathcal{N}(0, 1/d_k)$:
+
+\begin{align}
+\Var\left(\frac{(QK^T)_{ij}}{\sqrt{d_k}}\right) &= \Var\left(\frac{1}{\sqrt{d_k}} \sum_{l=1}^{d_k} Q_{il} K_{jl}\right) \\
+&= \frac{1}{d_k} \sum_{l=1}^{d_k} \Var(Q_{il}) \Var(K_{jl}) \\
+&= \frac{1}{d_k} \cdot d_k \cdot \frac{1}{d_k} = \frac{1}{d_k}
+\end{align}
+
+Without scaling, variance would be $d_k$, causing softmax to saturate and gradients to vanish. With scaling, variance is $1/d_k$, maintaining gradient flow.
+\end{proof}
+
+\subsection{Attention Weight Interpretation}
+
+The attention weights $A = \softmax(QK^T / \sqrt{d_k})$ form a probability distribution:
+
+\begin{lemma}[Attention as Probability Distribution]
+\label{lem:attention_prob}
+For attention weights $A = \softmax(S)$ where $S = QK^T / \sqrt{d_k}$:
+\begin{enumerate}
+    \item $A_{ij} \geq 0$ for all $i, j$
+    \item $\sum_{j=1}^m A_{ij} = 1$ for all $i$
+    \item $A$ is differentiable with respect to $Q, K$
+\end{enumerate}
+\end{lemma}
+
+\begin{proof}
+Properties (1) and (2) follow directly from the definition of softmax. Property (3) follows from the differentiability of softmax and matrix multiplication operations.
+\end{proof}
+
+\section{Multi-Head Attention: Detailed Derivation}
+
+\subsection{Architecture}
+
+For $H$ attention heads, we split the model dimension: $d_{\text{model}} = H \cdot d_k = H \cdot d_v$.
+
+\subsubsection{Head Computation}
+
+Each head $h \in \{1, \ldots, H\}$ computes:
+
+\begin{align}
+Q^{(h)} &= Q W_Q^{(h)}, \quad W_Q^{(h)} \in \RR^{d_{\text{model}} \times d_k} \\
+K^{(h)} &= K W_K^{(h)}, \quad W_K^{(h)} \in \RR^{d_{\text{model}} \times d_k} \\
+V^{(h)} &= V W_V^{(h)}, \quad W_V^{(h)} \in \RR^{d_{\text{model}} \times d_v}
+\end{align}
+
+Then:
+\begin{equation}
+\text{head}_h = \text{Attention}(Q^{(h)}, K^{(h)}, V^{(h)})
+\end{equation}
+
+\subsubsection{Concatenation and Output}
+
+All heads are concatenated and projected:
+
+\begin{equation}
+\text{MHA}(Q, K, V) = \text{Concat}(\text{head}_1, \ldots, \text{head}_H) W_O
+\end{equation}
+
+where $W_O \in \RR^{H d_v \times d_{\text{model}}}$.
+
+\subsection{Theoretical Properties}
+
+\begin{theorem}[Representation Power of Multi-Head Attention]
+\label{thm:mha_representation}
+Multi-head attention with $H$ heads can represent any function that single-head attention can represent, and in addition can capture $H$ different representation subspaces simultaneously.
+\end{theorem}
+
+\begin{proof}
+Single-head attention is a special case of multi-head attention where $H=1$. For $H > 1$, each head learns independent projection matrices $W_Q^{(h)}, W_K^{(h)}, W_V^{(h)}$, allowing the model to attend to different aspects of the input. The concatenation and final projection $W_O$ enable combining these diverse perspectives, providing strictly greater expressive power.
+\end{proof}
+
+\subsection{Complexity Analysis}
+
+\begin{proposition}[Computational Complexity]
+\label{prop:complexity}
+Multi-head attention with $H$ heads and sequence length $L$ has:
+\begin{itemize}
+    \item Time complexity: $O(L^2 \cdot d_{\text{model}})$
+    \item Space complexity: $O(L^2 + L \cdot d_{\text{model}})$
+\end{itemize}
+\end{proposition}
+
+\begin{proof}
+\begin{itemize}
+    \item \textbf{Time}: Computing $QK^T$ requires $O(L^2 \cdot d_k)$ operations. With $H$ heads, total is $O(H \cdot L^2 \cdot d_k) = O(L^2 \cdot d_{\text{model}})$.
+    \item \textbf{Space}: Attention matrix $A$ requires $O(L^2)$ storage. Feature matrices require $O(L \cdot d_{\text{model}})$.
+\end{itemize}
+\end{proof}
+
+\section{Feature Group Processing}
+
+\subsection{Per-Group Attention}
+
+For feature group $g$, we compute attention over sequence length $L=20$:
+
+\begin{equation}
+H_g^{(0)} = X_g W_{\text{proj}} \in \RR^{L \times d_h}
+\end{equation}
+
+where $X_g \in \RR^{L \times d_{\text{input},g}$ is the input feature matrix and $W_{\text{proj}} \in \RR^{d_{\text{input},g} \times d_h}$ projects to hidden dimension $d_h = 128$.
+
+\subsection{Multi-Head Attention per Group}
+
+For each group $g$:
+
+\begin{equation}
+H_g^{(l)} = \text{MHA}_l(H_g^{(l-1)}, H_g^{(l-1)}, H_g^{(l-1)})
+\end{equation}
+
+This is self-attention: queries, keys, and values all come from the same sequence.
+
+\section{Transformer Layers: Residual Connections}
+
+\subsection{Residual Connection Formula}
+
+Transformer layers use residual connections:
+
+\begin{equation}
+H^{(l)} = \LayerNorm(\text{MHA}_l(H^{(l-1)}) + H^{(l-1)})
+\end{equation}
+
+\subsection{Gradient Flow Analysis}
+
+\begin{lemma}[Residual Connection Gradient Preservation]
+\label{lem:residual_gradient}
+Residual connections preserve gradient magnitude, preventing vanishing gradients in deep networks.
+\end{lemma}
+
+\begin{proof}
+In a residual block, the forward pass is:
+\begin{equation}
+x_{l+1} = x_l + F(x_l; \theta_l)
+\end{equation}
+
+The backward pass computes:
+\begin{equation}
+\frac{\partial \mathcal{L}}{\partial x_l} = \frac{\partial \mathcal{L}}{\partial x_{l+1}} \left(1 + \frac{\partial F(x_l; \theta_l)}{\partial x_l}\right)
+\end{equation}
+
+Even if $\frac{\partial F}{\partial x_l}$ is small (or even negative), the identity term $1$ ensures that gradients can flow through. This is the key insight: gradients can flow directly through the identity mapping, bypassing the transformation layers if needed.
+\end{proof}
+
+\section{Feed-Forward Network}
+
+\subsection{Architecture}
+
+The FFN applies two linear transformations with ReLU activation:
+
+\begin{equation}
+\text{FFN}(x) = \ReLU(x W_1 + b_1) W_2 + b_2
+\end{equation}
+
+where:
+\begin{itemize}
+    \item $W_1 \in \RR^{128 \times 512}$: Expansion layer
+    \item $W_2 \in \RR^{512 \times 128}$: Compression layer
+    \item $b_1, b_2$: Bias terms
+\end{itemize}
+
+\subsection{Universal Approximation}
+
+\begin{proposition}[FFN Universal Approximation]
+\label{prop:ffn_approx}
+The two-layer FFN with ReLU activation can approximate any continuous function on a compact domain to arbitrary precision.
+\end{proposition}
+
+\begin{proof}
+This follows from the universal approximation theorem for neural networks \cite{hornik1991approximation}. The ReLU activation provides the necessary non-linearity, and the two-layer structure with sufficient width can approximate continuous functions.
+\end{proof}
+
+\section{Layer Normalization}
+
+\subsection{Definition}
+
+Layer normalization normalizes across the feature dimension:
+
+\begin{equation}
+\text{LayerNorm}(x) = \gamma \odot \frac{x - \mu}{\sigma} + \beta
+\end{equation}
+
+where:
+\begin{align}
+\mu &= \frac{1}{d} \sum_{i=1}^d x_i \\
+\sigma^2 &= \frac{1}{d} \sum_{i=1}^d (x_i - \mu)^2
+\end{align}
+
+and $\gamma, \beta$ are learnable parameters.
+
+\subsection{Benefits}
+
+\begin{proposition}[Layer Normalization Benefits]
+\label{prop:layernorm}
+Layer normalization provides:
+\begin{enumerate}
+    \item Faster convergence by reducing internal covariate shift
+    \item Stabilized activations across layers
+    \item Improved gradient flow
+\end{enumerate}
+\end{proposition}
+
+\section{Global Average Pooling}
+
+After $N_l = 3$ transformer layers, we pool over the sequence dimension:
+
+\begin{equation}
+z_g = \frac{1}{L} \sum_{t=1}^{L} H_{g,t}^{(N_l)} \in \RR^{d_h}
+\end{equation}
+
+This aggregates temporal information into a fixed-size representation.
+
+\section{Feature Aggregation}
+
+After processing all 8 feature groups, we aggregate:
+
+\begin{equation}
+z = \frac{1}{8} \sum_{g=1}^{8} z_g \in \RR^{d_h}
+\end{equation}
+
+This final representation $z \in \RR^{128}$ encodes all feature groups and is used for Q-value computation.
+
+\begin{thebibliography}{99}
+\bibitem{hornik1991approximation}
+Hornik, K., Stinchcombe, M., \& White, H. (1991). Multilayer feedforward networks are universal approximators. \textit{Neural networks}, 2(5), 359-366.
+\end{thebibliography}
+
+\end{document}
+

@@ -1,0 +1,60 @@
+
+================================================================================
+PROTAGONIST DQN MODEL SUMMARY
+================================================================================
+Generated: 2025-10-12 22:27:38
+
+MODEL ARCHITECTURE:
+-------------------
+State Size: 13 features
+Action Space: 3 actions (HOLD, BUY, SELL)
+Network: 
+  - Input: 13 neurons
+  - Hidden Layer 1: 128 neurons (ReLU + Dropout 0.2)
+  - Hidden Layer 2: 128 neurons (ReLU + Dropout 0.2)
+  - Hidden Layer 3: 64 neurons (ReLU + Dropout 0.2)
+  - Output: 3 neurons (Q-values)
+
+Total Parameters: 26,755
+Trainable Parameters: 26,755
+
+TRAINING DATA:
+--------------
+Symbol: AAPL
+Total Records: 405
+Date Range: 2024-11-25 16:00:00+00:00 to 2025-10-10 16:00:00+00:00
+Price Range: $171.50 - $258.25
+
+TEST PERFORMANCE:
+-----------------
+Total Return: -2.26%
+Final Portfolio Value: $97,737.64
+Sharpe Ratio: -0.23
+Maximum Drawdown: -2.43%
+Total Trades: 32
+Win Rate: 14.3%
+
+BENCHMARK COMPARISON (Buy & Hold):
+-----------------------------------
+DQN Return: -2.26%
+Buy & Hold Return: 5.70%
+Outperformance: -7.96%
+
+ACTION DISTRIBUTION:
+--------------------
+HOLD: 141 (34.8%)
+BUY:  16 (4.0%)
+SELL: 248 (61.2%)
+
+EXPLORATION PARAMETER:
+----------------------
+Final Epsilon: 0.7783
+
+KEY INSIGHTS:
+-------------
+1. The DQN agent underperformed the buy-and-hold strategy
+2. Risk-adjusted return (Sharpe): -0.23 (Needs Improvement)
+3. Maximum drawdown was 2.4% (Acceptable)
+4. Agent executed 32 trades (avg 0.08 trades/day)
+
+================================================================================

@@ -1,0 +1,119 @@
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{algorithm}
+\usepackage{algorithmic}
+\usepackage{hyperref}
+\usepackage{natbib}
+\usepackage{geometry}
+\usepackage{bm}
+
+\geometry{margin=1in}
+
+\title{\textbf{Chapter 1: Introduction and Problem Formulation}\\ARRL Multi-Head Attention Asset Pricing Agent}
+\author{ARRL Research Team}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\section{Introduction}
+\label{sec:intro}
+
+Financial asset pricing represents one of the most challenging problems in quantitative finance, combining high-dimensional feature spaces, temporal dependencies, and adversarial market conditions. This chapter establishes the theoretical and practical foundations for the Multi-Head Attention Deep Q-Network (MHA-DQN) framework designed to address these challenges.
+
+\section{Problem Statement}
+
+\subsection{Asset Pricing as Sequential Decision Making}
+
+Asset pricing can be formulated as a sequential decision-making problem where an agent must decide optimal trading actions based on current market state. The complexity arises from:
+
+\begin{enumerate}
+    \item \textbf{High Dimensionality}: Market states incorporate hundreds of features across multiple asset classes
+    \item \textbf{Non-Stationarity}: Market dynamics evolve over time
+    \item \textbf{Adversarial Environment}: Market conditions can be manipulated
+    \item \textbf{Long-Range Dependencies}: Historical events influence future prices
+\end{enumerate}
+
+\subsection{Markov Decision Process Formulation}
+
+We model asset pricing as a Markov Decision Process (MDP) $\mathcal{M} = (\mathcal{S}, \mathcal{A}, \mathcal{P}, \mathcal{R}, \gamma)$:
+
+\begin{itemize}
+    \item \textbf{State Space} $\mathcal{S} \subset \RR^d$: Feature vectors encoding:
+    \begin{itemize}
+        \item Price history and technical indicators
+        \item Macroeconomic indicators
+        \item Cross-asset correlations
+        \item Sentiment signals
+    \end{itemize}
+    
+    \item \textbf{Action Space} $\mathcal{A} = \{a_1, a_2, a_3\}$:
+    \begin{itemize}
+        \item $a_1 = \text{BUY}$: Take long position
+        \item $a_2 = \text{HOLD}$: Maintain current position
+        \item $a_3 = \text{SELL}$: Close or short position
+    \end{itemize}
+    
+    \item \textbf{Reward Function} $\mathcal{R}: \mathcal{S} \times \mathcal{A} \rightarrow \RR$:
+    \begin{equation}
+    r_t = \frac{V_t - V_{t-1}}{V_{t-1}} - \lambda \cdot \text{TransactionCost}(a_t)
+    \end{equation}
+    where $V_t$ is portfolio value and $\lambda$ penalizes transaction costs.
+    
+    \item \textbf{Discount Factor} $\gamma = 0.99$: Balances immediate vs. future returns
+\end{itemize}
+
+\section{Objective Function}
+
+The agent's goal is to maximize expected discounted return:
+
+\begin{equation}
+\label{eq:objective}
+J(\pi) = \EE_{\pi} \left[ \sum_{t=0}^{\infty} \gamma^t r_t \middle| s_0 \sim \rho_0 \right]
+\end{equation}
+
+where $\rho_0$ is the initial state distribution.
+
+\section{Challenges and Contributions}
+
+\subsection{Key Challenges}
+
+\begin{enumerate}
+    \item \textbf{Feature Interaction}: Capturing complex relationships among heterogeneous features
+    \item \textbf{Temporal Modeling}: Learning long-range dependencies in price sequences
+    \item \textbf{Robustness}: Maintaining performance under adversarial conditions
+    \item \textbf{Sample Efficiency}: Learning from limited historical data
+\end{enumerate}
+
+\subsection{Our Contributions}
+
+\begin{enumerate}
+    \item Multi-head attention mechanism for feature interaction modeling
+    \item Deep Q-learning for optimal sequential decision-making
+    \item Adversarial training framework for robustness
+    \item Comprehensive theoretical analysis and convergence guarantees
+\end{enumerate}
+
+\section{Document Organization}
+
+This methodology document is organized as follows:
+
+\begin{itemize}
+    \item \textbf{Chapter 1} (this chapter): Introduction and problem formulation
+    \item \textbf{Chapter 2}: Theoretical foundations and approximation theory
+    \item \textbf{Chapter 3}: Multi-head attention mechanism with detailed derivations
+    \item \textbf{Chapter 4}: Deep Q-network architecture
+    \item \textbf{Chapter 5}: Adversarial robustness framework
+    \item \textbf{Chapter 6}: Training methodology
+    \item \textbf{Chapter 7}: Evaluation metrics and performance analysis
+    \item \textbf{Chapter 8}: Theoretical guarantees and bounds
+\end{itemize}
+
+\end{document}
+
