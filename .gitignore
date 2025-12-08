@@ -89,6 +89,11 @@ outputs/
 *.backup
 *_temp.py
 *_original.py
+~$*
+*.aux
+*.out
+*.toc
+*.log
 
 # Jupyter Notebooks
 .ipynb_checkpoints/
