@@ -61,8 +61,3 @@ DEFAULT_TICKER = "NVDA"
 DEFAULT_DATA_YEARS = 5
 DEFAULT_SENTIMENT_ITEMS = 10
 
-# Fallback Metrics Configuration
-# Set to True to enable realistic fallback metrics when models are not trained
-# Fallback uses historical ticker data and market benchmarks for realistic estimates
-ENABLE_REALISTIC_FALLBACK = os.getenv("ENABLE_REALISTIC_FALLBACK", "True").lower() == "true"
-

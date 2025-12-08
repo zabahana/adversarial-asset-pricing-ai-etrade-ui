@@ -686,14 +686,6 @@ def main():
             help="Enable sentiment"
         )
         
-        # Fallback Options
-        st.markdown('<div class="sidebar-section">Fallback</div>', unsafe_allow_html=True)
-        enable_realistic_fallback = st.sidebar.checkbox(
-            "Realistic Fallback",
-            value=True,
-            help="Use realistic fallback metrics based on historical data when models aren't trained"
-        )
-        
         # Ultra-compact Training Options
         st.markdown('<div class="sidebar-section">Training</div>', unsafe_allow_html=True)
         train_models = True  # Always train live, no saved models
@@ -712,7 +704,6 @@ def main():
         st.session_state.num_episodes = num_episodes
         st.session_state.risk_level = risk_level
         st.session_state.enable_sentiment = enable_sentiment
-        st.session_state.enable_realistic_fallback = enable_realistic_fallback
         
         # Model Progress Section - Only show when there is progress (not idle)
         if 'model_progress' not in st.session_state:
@@ -824,7 +815,6 @@ def main():
                     num_episodes = st.session_state.get('num_episodes', 300)
                     risk_level = st.session_state.get('risk_level', 'Medium')
                     enable_sentiment = st.session_state.get('enable_sentiment', True)
-                    enable_realistic_fallback = st.session_state.get('enable_realistic_fallback', True)
                     
                     # Update progress: Data fetching
                     st.session_state.model_progress = {
@@ -930,8 +920,7 @@ def main():
                         ticker=ticker,
                         feature_path=features_path,
                         risk_level=risk_level,
-                        enable_sentiment=enable_sentiment,
-                        enable_realistic_fallback=enable_realistic_fallback
+                        enable_sentiment=enable_sentiment
                     )
                     
                     # Update progress: Complete

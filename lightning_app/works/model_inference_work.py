@@ -25,13 +25,9 @@ class ModelInferenceWork(LightningWork):
         self.results_dir = Path(results_dir)
         self.results_dir.mkdir(parents=True, exist_ok=True)
 
-    def run(self, ticker: str, feature_path: str, risk_level: str = "Medium", enable_sentiment: bool = True, enable_realistic_fallback: bool = True) -> str:
+    def run(self, ticker: str, feature_path: str, risk_level: str = "Medium", enable_sentiment: bool = True) -> str:
         print(f"[1] Running model evaluation for {ticker}...")
-        print(f"[CONFIG] Risk Level: {risk_level}, Sentiment: {'ENABLED' if enable_sentiment else 'DISABLED'}, Realistic Fallback: {'ENABLED' if enable_realistic_fallback else 'DISABLED'}")
-        
-        # Set fallback configuration
-        import os
-        os.environ["ENABLE_REALISTIC_FALLBACK"] = "True" if enable_realistic_fallback else "False"
+        print(f"[CONFIG] Risk Level: {risk_level}, Sentiment: {'ENABLED' if enable_sentiment else 'DISABLED'}")
         
         features = pd.read_parquet(feature_path)
         print(f"[2] Loaded {len(features)} rows of features for evaluation")
@@ -54,25 +50,19 @@ class ModelInferenceWork(LightningWork):
             print(f"\n[{model_num}] Evaluating {name}...")
             model = self._load_model(model_path, input_dim=input_dim, sequence_length=sequence_length)
             if model is None:
-                from ..config import ENABLE_REALISTIC_FALLBACK
-                fallback_type = "REALISTIC FALLBACK" if ENABLE_REALISTIC_FALLBACK else "SIMPLE MOCK"
-                print(f"[{model_num+1}] ⚠️  Model not found for {name}, using {fallback_type} metrics (not from actual backtest)")
-                # Use mock data if model not found
-                metrics, plots = self._get_mock_metrics(name, features, ticker=ticker, use_realistic_fallback=enable_realistic_fallback)
-                if ENABLE_REALISTIC_FALLBACK and metrics.get("is_realistic_fallback", False):
-                    print(f"[{model_num+1}] 📊 Realistic fallback metrics generated based on historical data")
-                else:
-                    print(f"[{model_num+1}] ⚠️  Simple mock metrics generated - Performance Metrics section will NOT display these")
+                print(f"[{model_num+1}] ⚠️  Model not found for {name} at {model_path}")
+                print(f"[{model_num+1}] ⚠️  Skipping evaluation - model checkpoint required for backtest")
+                continue
             else:
                 print(f"[{model_num+1}] ✅ Model loaded successfully, running ACTUAL backtest evaluation...")
                 metrics, plots = self._evaluate_model(model, features, name, input_dim, sequence_length, risk_level=risk_level)
                 print(f"[{model_num+2}] ✅ Evaluation complete for {name} - Results from ACTUAL model run")
-            model_num += 3
-            
-            results[name] = {
-                "metrics": metrics,
-                "plots": plots,
-            }
+                model_num += 3
+                
+                results[name] = {
+                    "metrics": metrics,
+                    "plots": plots,
+                }
 
         # Generate forecasts for next-day prediction (only for robust model)
         print(f"\n[FORECAST] Generating next-day forecasts...")
@@ -290,83 +280,6 @@ class ModelInferenceWork(LightningWork):
         
         return forecasted_price
     
-    @staticmethod
-    def _get_mock_metrics(model_name: str, features: pd.DataFrame, ticker: str = None, use_realistic_fallback: bool = True) -> Tuple[MetricDict, PlotList]:
-        """
-        Generate mock metrics for demonstration when models aren't available.
-        
-        Args:
-            model_name: Name of the model
-            features: Historical feature data
-            ticker: Optional ticker symbol
-            use_realistic_fallback: If True, use realistic fallback based on historical data
-        """
-        from ..config import ENABLE_REALISTIC_FALLBACK
-        from ..utils.realistic_fallback_metrics import RealisticFallbackMetrics
-        
-        # Use realistic fallback if enabled
-        if use_realistic_fallback and ENABLE_REALISTIC_FALLBACK:
-            try:
-                print(f"[INFO] Using realistic fallback metrics based on historical data for {ticker or 'ticker'}")
-                metrics_dict = RealisticFallbackMetrics.generate_realistic_metrics(
-                    model_name=model_name,
-                    features=features,
-                    ticker=ticker
-                )
-                plots: PlotList = {}
-                return metrics_dict, plots
-            except Exception as e:
-                print(f"[WARNING] Realistic fallback failed: {e}. Using simple mock metrics.")
-        
-        # Fallback to simple mock metrics
-        import numpy as np
-        
-        # Calculate some basic stats from features for realistic mock data
-        if "return" in features.columns:
-            returns = features["return"].dropna()
-            if len(returns) > 0:
-                annual_return = returns.mean() * 252  # Annualized
-                volatility = returns.std() * np.sqrt(252)
-                sharpe = (annual_return / volatility) if volatility > 0 else 0.0
-            else:
-                annual_return = 0.15
-                volatility = 0.20
-                sharpe = 0.75
-        else:
-            annual_return = 0.15
-            volatility = 0.20
-            sharpe = 0.75
-        
-        # Different metrics for different models
-        if "robust" in model_name.lower():
-            sharpe *= 1.15  # Robust model performs better
-            max_drawdown = -0.12
-            robustness_score = 0.85
-            cagr = annual_return * 1.1
-        elif "clean" in model_name.lower():
-            sharpe *= 1.05
-            max_drawdown = -0.15
-            robustness_score = 0.65
-            cagr = annual_return * 1.05
-        else:  # baseline_dqn
-            sharpe *= 1.0
-            max_drawdown = -0.18
-            robustness_score = 0.55
-            cagr = annual_return
-        
-        metrics: MetricDict = {
-            "sharpe": round(sharpe, 3),
-            "cagr": round(cagr, 4),
-            "max_drawdown": round(max_drawdown, 4),
-            "robustness_score": round(robustness_score, 3),
-            # Flag to indicate these are mock metrics
-            "from_actual_backtest": False,
-            "is_mock_data": True,
-            "is_realistic_fallback": False,
-        }
-        plots: PlotList = {}
-        
-        return metrics, plots
 
     @staticmethod
     def _evaluate_model(model, features: pd.DataFrame, model_name: str, input_dim: int, sequence_length: int, risk_level: str = "Medium") -> Tuple[MetricDict, PlotList]:
@@ -824,24 +737,44 @@ class ModelInferenceWork(LightningWork):
             X_adv = X_tensor.clone().detach()
             y_initial = None
             with torch.no_grad():
-                y_initial = model(X_adv).squeeze()
+                y_pred_initial = model(X_adv).squeeze()
+                # For Q-values (3 actions), use max Q-value as the prediction
+                if len(y_pred_initial.shape) > 1 and y_pred_initial.shape[-1] == 3:
+                    y_initial = y_pred_initial.max(dim=-1)[0]  # Max Q-value across actions
+                else:
+                    y_initial = y_pred_initial
+            
+            y_test_tensor = torch.FloatTensor(y_test).to(device)
             
             for i in range(max_iter):
                 X_adv.requires_grad_(True)
                 y_pred = model(X_adv).squeeze()
                 
+                # Handle Q-values: use max Q-value for loss computation
                 if len(y_pred.shape) > 1 and y_pred.shape[-1] == 3:
-                    loss = F.mse_loss(y_pred.mean(dim=-1), torch.FloatTensor(y_test).to(device))
+                    y_pred_scalar = y_pred.max(dim=-1)[0]  # Max Q-value
+                    loss = F.mse_loss(y_pred_scalar, y_test_tensor)
                 else:
-                    loss = F.mse_loss(y_pred, torch.FloatTensor(y_test).to(device))
+                    y_pred_scalar = y_pred
+                    loss = F.mse_loss(y_pred_scalar, y_test_tensor)
                 
                 model.zero_grad()
                 loss.backward()
                 
                 if X_adv.grad is not None:
-                    grad_norm = torch.norm(X_adv.grad.view(X_adv.size(0), -1), p=2, dim=1, keepdim=True) + 1e-8
-                    perturbation = (torch.abs(y_pred - torch.FloatTensor(y_test).to(device)).unsqueeze(-1) / grad_norm) * X_adv.grad
-                    X_adv = X_adv + (1 + overshoot) * perturbation.squeeze()
+                    # Compute gradient norm: flatten to (batch, -1) then compute L2 norm per sample
+                    grad_flat = X_adv.grad.view(X_adv.size(0), -1)  # (batch, seq_len * features)
+                    grad_norm = torch.norm(grad_flat, p=2, dim=1, keepdim=True) + 1e-8  # (batch, 1)
+                    
+                    # Compute prediction difference (scalar per sample)
+                    pred_diff = torch.abs(y_pred_scalar - y_test_tensor)  # (batch,)
+                    
+                    # Compute perturbation: (pred_diff / grad_norm) * gradient
+                    # Reshape to match gradient dimensions
+                    scale = (pred_diff / grad_norm.squeeze(-1)).view(-1, 1, 1)  # (batch, 1, 1)
+                    perturbation = scale * X_adv.grad
+                    
+                    X_adv = X_adv + (1 + overshoot) * perturbation
                     X_adv = torch.clamp(X_adv, X_tensor.min(), X_tensor.max()).detach()
                 else:
                     break
@@ -849,13 +782,16 @@ class ModelInferenceWork(LightningWork):
                 # Check convergence
                 with torch.no_grad():
                     y_new = model(X_adv).squeeze()
+                    if len(y_new.shape) > 1 and y_new.shape[-1] == 3:
+                        y_new = y_new.max(dim=-1)[0]
                     if torch.mean(torch.abs(y_new - y_initial)) > 0.1:
                         break
             
             with torch.no_grad():
                 adv_preds = model(X_adv).squeeze().cpu().numpy()
                 if len(adv_preds.shape) > 1 and adv_preds.shape[-1] == 3:
-                    adv_preds = (adv_preds[:, 2] - adv_preds[:, 0]) * 0.01
+                    # Convert Q-values to scalar prediction: use max Q-value
+                    adv_preds = adv_preds.max(axis=-1) * 0.01  # Scale appropriately
             adv_mse = mean_squared_error(y_test, adv_preds[:len(y_test)])
             mse_increase_pct = ((adv_mse - clean_mse) / clean_mse) * 100 if clean_mse > 0 else 0
             
